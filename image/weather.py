@@ -6,7 +6,7 @@ import glob
 import os
 import sys
 
-from sklearn.externals import joblib
+import joblib
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -29,29 +29,44 @@ try:
 except FileExistsError:
     pass
 
-p = joblib.Parallel(n_jobs=32, verbose=1)
+p = joblib.Parallel(n_jobs=64, verbose=1)
 # slices for d6
-y1_d6, y2_d6, x1_d6, x2_d6 = (600, 1300, 3000, 3800)
+x1_d6 = 200
+x2_d6 = 1000
+y1_d6 = 200
+y2_d6 = 1000
 
-def get_patch_brightness_d6(path):
-    im = plt.imread(path)
-    imslice = im[y1_d6:y2_d6, x1_d6:x2_d6]
-    return imslice.mean()
+# format: x1, x2, y1, y2
+squares = [(1080, 1500, 2450, 2700),
+           (3050, 3180, 1020, 1250),
+           (3480, 3610, 820, 1010),
+           (1500 + 600, 1500 + 900, 650, 800),
+           (1500 + 600 + 130, 1500 + 600 + 140, 250, 310),
+           (2440, 2480, 3720, 3750),
+           (2470, 2490, 20, 40),
+           (2000 + 940, 2970, 300, 330),
+           (2000 + 680, 2000 + 760, 1500 + 300, 1500 + 380),
+           (2000 + 370 + 10, 2000 + 410, 1500 + 400, 1500 + 450)]
 
-def process(directory):
+def get_patch_brightness_d6(path, ix):
+    if ix is None:
+        return plt.imread(path)[y1_d6:y2_d6, x1_d6:x2_d6].mean()
+    else:
+        six = squares[ix]
+        return plt.imread(path)[six[2]:six[3],six[0]:six[1]].mean()
+
+def process(directory, ix):
     image_files = glob.glob(directory + "/*d6*.png")
     for f in image_files:
         assert ("_d6_" in f or "_d6-" in f)
-    futs = [joblib.delayed(get_patch_brightness_d6)(f) for f in image_files]
+    futs = [joblib.delayed(get_patch_brightness_d6)(f, ix) for f in image_files]
     results = p(futs)
     timestamps = [dt.fromtimestamp(int(f.split("_")[-1].split(".")[0])) for f in image_files]
     return timestamps, results
 
-def main(test=True, spring_or_fall="spring"):
+def main(test=True, spring_or_fall="fall", ix=None):
     spring_dirs = glob.glob(UOFS_DIR + "2017-0[3-6]*_night")
-    fall_dirs = glob.glob(UOFS_DIR + "2017-0[8-9]*_night") +\
-                glob.glob(UOFS_DIR + "2017-10*_night") +\
-                glob.glob(UOFS_DIR + "2017-11*_night")
+    fall_dirs = glob.glob(UOFS_DIR + "2017-0[9]*_night") 
     sortfunc = lambda x: tuple([int(a) for a in x.split("/")[-1].split("_")[0].split("-")[1:3]])
     spring_dirs.sort(key=sortfunc)
     fall_dirs.sort(key=sortfunc)
@@ -62,10 +77,11 @@ def main(test=True, spring_or_fall="spring"):
     for d in night_dirs:
         date = d.split("/")[-1].split("_")[0]
         out_f = WEATHER_RESULTS_DIR + "/{}.csv".format(date)
+        out_f = out_f + (str(ix) if ix is not None else "")
         if os.path.isfile(out_f):
             continue
-        print("on night {}".format(date))
-        timestamps, results = process(d)
+        print("on night {}, ix {}".format(date, ix))
+        timestamps, results = process(d, ix=ix)
         df = pd.DataFrame(results, index=timestamps)
         df.to_csv(out_f)
 
@@ -111,4 +127,5 @@ def plot_image(image_file, cmap=None):
 
 
 if __name__ == "__main__":
-    main(test=False, spring_or_fall="spring")
+    for i in range(len(squares)):
+        main(test=False, spring_or_fall="fall", ix=i)
