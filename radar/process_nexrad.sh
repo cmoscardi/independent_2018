@@ -1,7 +1,7 @@
 #!/bin/bash
 
-MONTH="09"
-DAY="$1"
+MONTH="$1"
+DAY="$2"
 
 
 echo "processing ar2v files for $MONTH - $DAY ..."
