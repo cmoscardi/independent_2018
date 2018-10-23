@@ -36,8 +36,7 @@ def plot_video(frame):
                          c=[frame["DBZH"].min(), frame["DBZH"].max()])
     ax.set_xlim([frame["s1"].min(), frame["s1"].max()])
     ax.set_ylim([frame["s2"].min(), frame["s2"].max()])
-    def init():
-        return scatter
+
     
     dates = np.sort(frame.Date_Time.unique())
     def update_scatter(i):
