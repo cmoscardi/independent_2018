@@ -23,7 +23,6 @@ dependencies:
   - decorator=4.3.0=py_0
   - descartes=1.1.0=py_2
   - expat=2.2.5=hfc679d8_2
-  - fiona
   - fontconfig=2.13.1=h65d0f4c_0
   - freetype=2.9.1=h6debe1e_4
   - freexl=1.0.5=h470a237_2
