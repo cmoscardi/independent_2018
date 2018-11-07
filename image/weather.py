@@ -29,15 +29,24 @@ try:
 except FileExistsError:
     pass
 
-p = joblib.Parallel(n_jobs=64, verbose=1)
+p = joblib.Parallel(n_jobs=64, verbose=1, backend='multiprocessing')
 # slices for d6
 x1_d6 = 200
 x2_d6 = 1000
 y1_d6 = 200
 y2_d6 = 1000
+d6_skypatch = [y1_d6, y2_d6, x1_d6, x2_d6]
+
+# slices for d9
+x1_d9 = 2800
+x2_d9 = 3600
+y1_d9 = 3800
+y2_d9 = 4600
+d9_skypatch = [y1_d9, y2_d9, x1_d9, x2_d9]
 
 # format: x1, x2, y1, y2
-squares = [(1080, 1500, 2450, 2700),
+# for d6
+squares_d6 = [(1080, 1500, 2450, 2700),
            (3050, 3180, 1020, 1250),
            (3480, 3610, 820, 1010),
            (1500 + 600, 1500 + 900, 650, 800),
@@ -48,23 +57,32 @@ squares = [(1080, 1500, 2450, 2700),
            (2000 + 680, 2000 + 760, 1500 + 300, 1500 + 380),
            (2000 + 370 + 10, 2000 + 410, 1500 + 400, 1500 + 450)]
 
-def get_patch_brightness_d6(path, ix):
+squares_d9 = None
+
+def get_patch_brightness(path, ix, which):
+    y1, y2, x1, x2 = d6_skypatch if which == 'd6' else d9_skypatch
     if ix is None:
-        return plt.imread(path)[y1_d6:y2_d6, x1_d6:x2_d6].mean()
+        return plt.imread(path)[y1:y2, x1:x2].mean()
     else:
+        squares = squares_d6 if which == 'd6' else squares_d9
         six = squares[ix]
         return plt.imread(path)[six[2]:six[3],six[0]:six[1]].mean()
 
-def process(directory, ix):
-    image_files = glob.glob(directory + "/*d6*.png")
-    for f in image_files:
-        assert ("_d6_" in f or "_d6-" in f)
-    futs = [joblib.delayed(get_patch_brightness_d6)(f, ix) for f in image_files]
+def process(directory, ix, which='d6'):
+    if which == 'd6':
+        image_files = glob.glob(directory + "/*d6*.png")
+        for f in image_files:
+            assert ("_d6_" in f or "_d6-" in f)
+    else:
+        image_files = glob.glob(directory + "/*d9*.png")
+        for f in image_files:
+            assert ("_d9_" in f or "_d9-" in f)
+    futs = [joblib.delayed(get_patch_brightness)(f, ix, which) for f in image_files]
     results = p(futs)
     timestamps = [dt.fromtimestamp(int(f.split("_")[-1].split(".")[0])) for f in image_files]
     return timestamps, results
 
-def main(test=True, spring_or_fall="fall", ix=None):
+def main(test=True, spring_or_fall="fall", ix=None, which='d6'):
     spring_dirs = glob.glob(UOFS_DIR + "2017-0[3-6]*_night")
     fall_dirs = glob.glob(UOFS_DIR + "2017-0[9]*_night") 
     sortfunc = lambda x: tuple([int(a) for a in x.split("/")[-1].split("_")[0].split("-")[1:3]])
@@ -72,16 +90,16 @@ def main(test=True, spring_or_fall="fall", ix=None):
     fall_dirs.sort(key=sortfunc)
     night_dirs = spring_dirs if spring_or_fall == "spring" else fall_dirs
     if test:
-        night_dirs = night_dirs[:2]
+        night_dirs = night_dirs[:1]
 
     for d in night_dirs:
         date = d.split("/")[-1].split("_")[0]
-        out_f = WEATHER_RESULTS_DIR + "/{}.csv".format(date)
+        out_f = WEATHER_RESULTS_DIR + "/{}".format(which) + "/{}.csv".format(date)
         out_f = out_f + (str(ix) if ix is not None else "")
         if os.path.isfile(out_f):
             continue
         print("on night {}, ix {}".format(date, ix))
-        timestamps, results = process(d, ix=ix)
+        timestamps, results = process(d, ix=ix, which=which)
         df = pd.DataFrame(results, index=timestamps)
         df.to_csv(out_f)
 
@@ -127,5 +145,4 @@ def plot_image(image_file, cmap=None):
 
 
 if __name__ == "__main__":
-    for i in range(len(squares)):
-        main(test=False, spring_or_fall="fall", ix=i)
+    main(test=False, spring_or_fall="fall", which='d9')
