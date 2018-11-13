@@ -84,7 +84,7 @@ def process(directory, ix, which='d6'):
 
 def main(test=True, spring_or_fall="fall", ix=None, which='d6'):
     spring_dirs = glob.glob(UOFS_DIR + "2017-0[3-6]*_night")
-    fall_dirs = glob.glob(UOFS_DIR + "2017-0[9]*_night") 
+    fall_dirs = glob.glob(UOFS_DIR + "2017-10*_night") 
     sortfunc = lambda x: tuple([int(a) for a in x.split("/")[-1].split("_")[0].split("-")[1:3]])
     spring_dirs.sort(key=sortfunc)
     fall_dirs.sort(key=sortfunc)
