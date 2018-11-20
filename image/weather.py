@@ -43,6 +43,17 @@ x2_d9 = 3600
 y1_d9 = 3800
 y2_d9 = 4600
 d9_skypatch = [y1_d9, y2_d9, x1_d9, x2_d9]
+y1_d9_v2 = 500
+y2_d9_v2 = 1300
+x1_d9_v2 = 4000
+x2_d9_v2 = 4800
+d9_skypatch_v2 = [y1_d9_v2, y2_d9_v2, x1_d9_v2, x2_d9_v2]
+
+y1_d9_v3 = 500
+y2_d9_v3 = 1300
+x1_d9_v3 = 4500
+x2_d9_v3 = 4900
+d9_skypatch_v3 = [y1_d9_v3, y2_d9_v3, x1_d9_v3, x2_d9_v3]
 
 # format: x1, x2, y1, y2
 # for d6
@@ -60,7 +71,7 @@ squares_d6 = [(1080, 1500, 2450, 2700),
 squares_d9 = None
 
 def get_patch_brightness(path, ix, which):
-    y1, y2, x1, x2 = d6_skypatch if which == 'd6' else d9_skypatch
+    y1, y2, x1, x2 = d6_skypatch if which == 'd6' else d9_skypatch_v3
     if ix is None:
         return plt.imread(path)[y1:y2, x1:x2].mean()
     else:
@@ -84,7 +95,7 @@ def process(directory, ix, which='d6'):
 
 def main(test=True, spring_or_fall="fall", ix=None, which='d6'):
     spring_dirs = glob.glob(UOFS_DIR + "2017-0[3-6]*_night")
-    fall_dirs = glob.glob(UOFS_DIR + "2017-10*_night") 
+    fall_dirs = glob.glob(UOFS_DIR + "2017-10*_night") + glob.glob(UOFS_DIR + "2017-09*_night")
     sortfunc = lambda x: tuple([int(a) for a in x.split("/")[-1].split("_")[0].split("-")[1:3]])
     spring_dirs.sort(key=sortfunc)
     fall_dirs.sort(key=sortfunc)
