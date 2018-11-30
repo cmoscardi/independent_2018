@@ -120,6 +120,23 @@ LOWER_MN = {'lat_min': 40.696417,
             'lon_min': -74.022494,
             'lon_max': -73.959454}
 
+def get_tight_bounds(tight_bounds, res):
+    lat_0 = res.radar_y
+    lon_0 = res.radar_x
+
+    lon_max, lon_min = tight_bounds['lon_max'], tight_bounds['lon_min']
+    lons = [lon_max, lon_min]
+    lat_max, lat_min = tight_bounds['lat_max'], tight_bounds['lat_min']
+    lats = [lat_max, lat_min]
+    (xmax, xmin), (ymax, ymin) = pyart.core.transforms.geographic_to_cartesian_aeqd(lons, lats, lon_0, lat_0)
+    
+
+    interp_x = np.linspace(xmin, xmax, math.floor((xmax - xmin) / INTERP_SCALE))
+    interp_y = np.linspace(ymin, ymax, math.floor((ymax - ymin) / INTERP_SCALE))
+    xx, yy = np.meshgrid(interp_x, interp_y)
+    transformed = pyart.core.transforms.cartesian_to_geographic_aeqd(xx, yy, lon_0, lat_0)
+    return interp_x, interp_y, xx, yy, transformed
+
 def interp_radar_values(res, init_bounds, tight_bounds):
     
     values = res.dbzh.reshape(-1)
@@ -139,16 +156,12 @@ def interp_radar_values(res, init_bounds, tight_bounds):
     tight_y = np.extract(filt, res.y)
     tight_xmin, tight_xmax = tight_x.min(), tight_x.max()
     tight_ymin, tight_ymax = tight_y.min(), tight_y.max()
-    interp_x = np.linspace(tight_xmin, tight_xmax, math.floor((tight_xmax - tight_xmin) / INTERP_SCALE))
-    interp_y = np.linspace(tight_ymin, tight_ymax, math.floor((tight_ymax - tight_ymin) / INTERP_SCALE))
-    xx, yy = np.meshgrid(interp_x, interp_y)
+
+    interp_x, interp_y, xx, yy, transformed, grid_transformed = get_tight_bounds(tight_bounds, res)
     
     result = griddata((x, y),
                       values.filled(0),
                       (xx, yy))
-    transformed = pyart.core.transforms.cartesian_to_geographic_aeqd(xx, yy, 
-                                                                     res.radar_x, 
-                                                                     res.radar_y)
     return result, transformed, xx, yy
 
 

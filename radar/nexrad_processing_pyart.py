@@ -24,7 +24,7 @@ def process(f):
         res, radar = pu.load_filter_dbzh(f, False, False, False, True)
         interp1 = pu.interp_radar_values(res, pu.MN_INIT_CUT, pu.LOWER_MN)
         _dump_interp_res(interp1, f + ".raw")
-        pu._filter_rhov(res.dbzh, radar.get_field(0, 'cross_correlation_ratio'))
+        pu._filter_rhovs(res.dbzh, radar.get_field(0, 'cross_correlation_ratio'))
         pu._filter_dbzh(res.dbzh)
         pu._filter_v(res.dbzh, radar.get_field(0, 'velocity'))
         interp2 = pu.interp_radar_values(res, pu.MN_INIT_CUT, pu.LOWER_MN)
@@ -43,7 +43,6 @@ def main(year, month, day):
     with open(directory + "/failures.txt", "w+") as out_f:
         out_f.writelines("\n".join(str(x) for x in set(results)))
 
-    
     
 
 
