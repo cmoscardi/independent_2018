@@ -41,9 +41,16 @@ nearest_neighbors = [np.abs(in_frame.surface_area - osa).sort_values()[:10].inde
                      for osa in out_frame.surface_area]
 out_reset["nearest_ix"] = nearest_neighbors
 
+import shapely.geometry
+import geopandas as gpd
 
-def krige(means):
-    means_f = means.to_frame()
+filt = (out_reset.geometry.centroid.x > -74.03) & (out_reset.geometry.centroid.y > 40.7)
+ch = gpd.GeoSeries(pd.concat([in_frame.geometry, out_reset[filt].geometry])).unary_union.convex_hull
+ch_df = gpd.GeoDataFrame({"geometry": gpd.GeoSeries([ch])})
+
+
+def krige(means, min_val):
+    means_f = means.to_frame().apply(lambda x: x - min_val)
     in_frame_bgt = in_frame.merge(means_f, left_on='BBL', right_index=True)
     in_frame_bgt['brightness'] = in_frame_bgt[means_f.columns[0]]
     in_frame_bgt['scaled_bgt'] = in_frame_bgt['brightness'] * in_frame_bgt['surface_area']
@@ -62,7 +69,7 @@ def krige(means):
     full_x = np.concatenate((in_considered.geometry.centroid.x.values, out_reset_considered.geometry.centroid.x.values))
     full_y = np.concatenate((in_considered.geometry.centroid.y.values, out_reset_considered.geometry.centroid.y.values))
     full_z = np.concatenate((in_considered.scaled_bgt.values, out_considered.values))
-    full_z = np.log((full_z - full_z.min()) + 1)
+    full_z = np.log(full_z + 1)
 
     OK = OrdinaryKriging(full_x, full_y,  full_z, variogram_model='gaussian', nlags=25,
                          verbose=True)
@@ -92,20 +99,81 @@ def main(night):
 
     concatd = pd.concat((subbed_d6, subbed_d9))
     final_light = concatd.groupby(concatd.index).mean()
+    min_val = final_light.min().min()
     p = joblib.Parallel(n_jobs=64, backend='multiprocessing', verbose=1)
-    jobs = [joblib.delayed(krige)(l) for ix, l in final_light.iterrows()]
+    jobs = [joblib.delayed(krige)(l, min_val) for ix, l in final_light.iterrows()]
     results = zip(final_light.index, p(jobs))
     for ts, result in results:
         df = pd.DataFrame({"x": interp_x.ravel(), "y": interp_y.ravel(), "z": result.ravel()})
         df.to_csv("kriged/{}/{}.csv".format(night, ts))
     
-    return krige(final_light.iloc[0])
-    
+    return "OK"
     
 
+def filter_to_manhattan(df):
+    df["geometry"] = df[["x", "y"]].apply(shapely.geometry.Point, axis=1)
+    df = gpd.GeoDataFrame(df)
+    joined = gpd.sjoin(df, ch_df)
+    return joined
+    
+    
+def plot_video(frame):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    divider = make_axes_locatable(ax)
 
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+
+    scatter = ax.scatter([frame["x"].min(), frame["x"].max()], 
+                         [frame["y"].min(), frame["y"].max()],
+                         c=[frame["z"].min(), frame["z"].max()])
+    ax.set_xlim([frame["x"].min(), frame["x"].max()])
+    ax.set_ylim([frame["y"].min(), frame["y"].max()])
+
+    
+    dates = np.sort(frame.datetime.unique())
+    def update_scatter(i):
+        xy = frame[frame.datetime == dates[i]]
+        scatter.set_offsets(xy[['x', 'y']])
+        scatter.set_array(xy['z'])
+        return scatter,
+
+    anim = animation.FuncAnimation(fig, update_scatter,
+                                   frames=len(dates), interval=400)
+    fig.colorbar(scatter, cax=cax)
+
+    return anim
+
+
+def process_light_csv(fname):
+    df = pd.read_csv(fname)
+    df["timestamp"] = pd.to_datetime(fname.split("/")[-1].split(".")[-2])
+    return df
+
+def main2():
+    """
+    the purpose of this function is to filter all files in the kriged/
+    directory
+    """
+    import glob
+    import os
+
+    nights = glob.glob("kriged/*")
+    nights = [n for n in nights if 'filtd' not in n or 'csv' in n]
+    for night in nights:
+        print("on night {}".format(night))
+        light_levels_files = glob.glob("{}/*.csv".format(night))
+        fname = "{}_filtd.csv".format(night)
+        if len(light_levels_files) == 0 or os.path.exists(fname):
+            continue
+        light_levels = pd.concat((process_light_csv(f) for f in light_levels_files), ignore_index=True)
+        filtd = filter_to_manhattan(light_levels)
+        filtd.to_csv(fname)
     
 if __name__ == "__main__":
     import sys
     night = sys.argv[1]
-    main(night)
+    if night == 'filter':
+        main2()
+        sys.exit(0)
+    else:
+        main(night)

@@ -157,7 +157,7 @@ def interp_radar_values(res, init_bounds, tight_bounds):
     tight_xmin, tight_xmax = tight_x.min(), tight_x.max()
     tight_ymin, tight_ymax = tight_y.min(), tight_y.max()
 
-    interp_x, interp_y, xx, yy, transformed, grid_transformed = get_tight_bounds(tight_bounds, res)
+    interp_x, interp_y, xx, yy, transformed = get_tight_bounds(tight_bounds, res)
     
     result = griddata((x, y),
                       values.filled(0),
