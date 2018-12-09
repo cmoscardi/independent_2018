@@ -94,9 +94,11 @@ def main(night):
     final_light_d9 = final_light_d9.set_index("BBL").swapaxes(1, 0)
     zpo_d6 = load_zeropoint("weather_results/d6/{}.csv".format(night))
     zpo_d9 = load_zeropoint("weather_results/d9/{}.csv".format(night))
-    subbed_d6 = final_light_d6.apply(lambda x: x - zpo_d6["avg"])
-    subbed_d9 = final_light_d9.apply(lambda x: x - zpo_d9["avg"])
+#    subbed_d6 = final_light_d6.apply(lambda x: x - zpo_d6["avg"])
+#    subbed_d9 = final_light_d9.apply(lambda x: x - zpo_d9["avg"])
 
+    subbed_d6 = final_light_d6
+    subbed_d9 = final_light_d9
     concatd = pd.concat((subbed_d6, subbed_d9))
     final_light = concatd.groupby(concatd.index).mean()
     min_val = final_light.min().min()
