@@ -55,6 +55,12 @@ x1_d9_v3 = 4500
 x2_d9_v3 = 4900
 d9_skypatch_v3 = [y1_d9_v3, y2_d9_v3, x1_d9_v3, x2_d9_v3]
 
+y1_d9_911 = 750
+y2_d9_911 = 850
+x1_d9_911 = 2900
+x2_d9_911 = 4900
+d9_911 = [ y1_d9_911, y2_d9_911, x1_d9_911, x2_d9_911 ]
+
 # format: x1, x2, y1, y2
 # for d6
 squares_d6 = [(1080, 1500, 2450, 2700),
@@ -71,7 +77,7 @@ squares_d6 = [(1080, 1500, 2450, 2700),
 squares_d9 = None
 
 def get_patch_brightness(path, ix, which):
-    y1, y2, x1, x2 = d6_skypatch if which == 'd6' else d9_skypatch_v3
+    y1, y2, x1, x2 = d6_skypatch if which == 'd6' else d9_911
     if ix is None:
         return plt.imread(path)[y1:y2, x1:x2].mean()
     else:
@@ -100,12 +106,15 @@ def main(test=True, spring_or_fall="fall", ix=None, which='d6'):
     spring_dirs.sort(key=sortfunc)
     fall_dirs.sort(key=sortfunc)
     night_dirs = spring_dirs if spring_or_fall == "spring" else fall_dirs
+    if spring_or_fall == '911':
+        night_dirs = [n for n in night_dirs if '2017-09-12' in n]
+        print(night_dirs)
     if test:
         night_dirs = night_dirs[:1]
 
     for d in night_dirs:
         date = d.split("/")[-1].split("_")[0]
-        out_f = WEATHER_RESULTS_DIR + "/{}".format(which) + "/{}.csv".format(date)
+        out_f = WEATHER_RESULTS_DIR + "/{}".format(which) + "/{}.csv".format(date) + ("" if spring_or_fall != "911" else "911")
         out_f = out_f + (str(ix) if ix is not None else "")
         if os.path.isfile(out_f):
             continue
@@ -156,4 +165,4 @@ def plot_image(image_file, cmap=None):
 
 
 if __name__ == "__main__":
-    main(test=False, spring_or_fall="fall", which='d9')
+    main(test=False, spring_or_fall="911", which='d9')

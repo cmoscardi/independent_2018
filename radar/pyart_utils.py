@@ -89,11 +89,9 @@ def load_filter_dbzh(radar_f, filter_dbzh=True,
         _filter_dbzh(reflects) 
     
     x, y, z = radar.get_gate_x_y_z(0)
-    radar_x = radar.longitude['data']
-    radar_y = radar.latitude['data']
-    lon, lat = pyart.core.transforms.cartesian_to_geographic_aeqd(x, y, 
-                                                                  radar_x, 
-                                                                  radar_y)
+    radar_x = radar.longitude['data'][0]
+    radar_y = radar.latitude['data'][0]
+    lon, lat = pyart.core.transforms.cartesian_to_geographic(x, y, {'proj': 'eqc', 'lon_0': radar_x, 'lat_0': radar_y})
     
     if return_radar:
         return RadarResult(reflects, x, y, lon, lat, radar_x, radar_y), radar
@@ -128,13 +126,13 @@ def get_tight_bounds(tight_bounds, res):
     lons = [lon_max, lon_min]
     lat_max, lat_min = tight_bounds['lat_max'], tight_bounds['lat_min']
     lats = [lat_max, lat_min]
-    (xmax, xmin), (ymax, ymin) = pyart.core.transforms.geographic_to_cartesian_aeqd(lons, lats, lon_0, lat_0)
+    (xmax, xmin), (ymax, ymin) = pyart.core.transforms.geographic_to_cartesian(lons, lats, {'proj': 'eqc', 'lon_0': lon_0, 'lat_0': lat_0})
     
 
     interp_x = np.linspace(xmin, xmax, math.floor((xmax - xmin) / INTERP_SCALE))
     interp_y = np.linspace(ymin, ymax, math.floor((ymax - ymin) / INTERP_SCALE))
     xx, yy = np.meshgrid(interp_x, interp_y)
-    transformed = pyart.core.transforms.cartesian_to_geographic_aeqd(xx, yy, lon_0, lat_0)
+    transformed = pyart.core.transforms.cartesian_to_geographic(xx, yy, {'proj': 'eqc', 'lon_0': lon_0, 'lat_0': lat_0})
     return interp_x, interp_y, xx, yy, transformed
 
 def interp_radar_values(res, init_bounds, tight_bounds):
